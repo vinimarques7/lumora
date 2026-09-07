@@ -30,6 +30,9 @@ services:
       REFRESH_TOKEN_SECRET: dev_refresh_secret_change_me
       FRONTEND_URL: http://localhost:5173
       NODE_ENV: development
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      ABSTRACT_API_KEY: ${ABSTRACT_API_KEY:-}
     ports:
       - "5173:5173"
       - "3001:3001"
