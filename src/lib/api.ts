@@ -1,21 +1,69 @@
 const BASE = '/api'
+const TOKEN_KEY = 'sc_access_token'
+
+function getStoredToken(): string | null {
+  if (typeof window === 'undefined') return null
+  return sessionStorage.getItem(TOKEN_KEY)
+}
+
+function setStoredToken(token: string): void {
+  if (typeof window === 'undefined') return
+  sessionStorage.setItem(TOKEN_KEY, token)
+}
+
+function clearStoredToken(): void {
+  if (typeof window === 'undefined') return
+  sessionStorage.removeItem(TOKEN_KEY)
+}
+
+async function refreshAccessToken(): Promise<string> {
+  const res = await fetch(`${BASE}/auth/refresh`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+  })
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }))
+    throw new ApiError(res.status, body.error ?? 'Sessão expirada')
+  }
+
+  const data = (await res.json()) as { accessToken: string }
+  setStoredToken(data.accessToken)
+  return data.accessToken
+}
 
 async function request<T>(
   path: string,
   init?: RequestInit & { token?: string },
 ): Promise<T> {
   const { token, ...rest } = init ?? {}
+  const authToken = token ? getStoredToken() ?? token : undefined
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(rest.headers as Record<string, string> | undefined),
   }
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`
   }
 
-  const res = await fetch(`${BASE}${path}`, { ...rest, headers })
+  let res = await fetch(`${BASE}${path}`, { ...rest, headers })
+
+  // If access token expired, refresh once and retry authenticated requests.
+  if (res.status === 401 && authToken && path !== '/auth/refresh') {
+    try {
+      const freshToken = await refreshAccessToken()
+      const retryHeaders: Record<string, string> = {
+        ...headers,
+        Authorization: `Bearer ${freshToken}`,
+      }
+      res = await fetch(`${BASE}${path}`, { ...rest, headers: retryHeaders })
+    } catch {
+      clearStoredToken()
+    }
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }))
