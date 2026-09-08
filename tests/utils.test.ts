@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { calcQuizPoints, hexToHslString } from '@/lib/utils'
+import { isEmailDeliverable } from '@/../api/_lib/mxCheck'
 
 describe('calcQuizPoints', () => {
   it('returns max points when full time remains', () => {
@@ -21,5 +22,15 @@ describe('hexToHslString', () => {
   it('converts valid hex color', () => {
     const hsl = hexToHslString('#6366f1')
     expect(hsl).toContain('%')
+  })
+})
+
+describe('isEmailDeliverable', () => {
+  it('rejects throwaway email domains', async () => {
+    await expect(isEmailDeliverable('teste@mailinator.com')).resolves.toBe(false)
+  })
+
+  it('accepts a normal public domain', async () => {
+    await expect(isEmailDeliverable('usuario@gmail.com')).resolves.toBe(true)
   })
 })

@@ -4,6 +4,14 @@ import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { Brand } from './Brand'
 
@@ -11,8 +19,11 @@ export function Navbar({ brandTitle }: { brandTitle: string }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
 
   async function handleLogout() {
+    setLogoutConfirmOpen(false)
+    setMobileOpen(false)
     await logout()
     navigate('/')
   }
@@ -59,7 +70,7 @@ export function Navbar({ brandTitle }: { brandTitle: string }) {
                 </Link>
               </Button>
 
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <Button variant="ghost" size="sm" onClick={() => setLogoutConfirmOpen(true)}>
                 <LogOut className="h-4 w-4" />
                 Sair
               </Button>
@@ -94,6 +105,12 @@ export function Navbar({ brandTitle }: { brandTitle: string }) {
         )}
       >
         <nav className="container flex flex-col gap-1 py-4">
+          <Button variant="ghost" className="justify-start" asChild>
+            <Link to="/explore" onClick={() => setMobileOpen(false)}>
+              <Compass className="h-4 w-4" />
+              Explorar
+            </Link>
+          </Button>
           {user ? (
             <>
               <Button variant="ghost" className="justify-start" asChild>
@@ -116,7 +133,7 @@ export function Navbar({ brandTitle }: { brandTitle: string }) {
                   Perfil
                 </Link>
               </Button>
-              <Button variant="ghost" className="justify-start" onClick={handleLogout}>
+              <Button variant="ghost" className="justify-start" onClick={() => setLogoutConfirmOpen(true)}>
                 <LogOut className="h-4 w-4" />
                 Sair
               </Button>
@@ -137,6 +154,25 @@ export function Navbar({ brandTitle }: { brandTitle: string }) {
           )}
         </nav>
       </div>
+
+      <Dialog open={logoutConfirmOpen} onOpenChange={setLogoutConfirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Sair da conta?</DialogTitle>
+            <DialogDescription>
+              Você precisará entrar novamente para acessar seus decks.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLogoutConfirmOpen(false)}>
+              Não
+            </Button>
+            <Button variant="destructive" onClick={handleLogout}>
+              Sim, sair
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </header>
   )
 }

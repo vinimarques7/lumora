@@ -196,8 +196,9 @@ function CardFormDialog({
           className="space-y-4"
         >
           <div className="space-y-2">
-            <Label>Pergunta *</Label>
+            <Label htmlFor="card-question">Pergunta *</Label>
             <Textarea
+              id="card-question"
               placeholder="O que é...?"
               required
               value={form.question}
@@ -206,8 +207,9 @@ function CardFormDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label>Resposta *</Label>
+            <Label htmlFor="card-answer">Resposta *</Label>
             <Textarea
+              id="card-answer"
               placeholder="A resposta correta..."
               required
               value={form.answer}

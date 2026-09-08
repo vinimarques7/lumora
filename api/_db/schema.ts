@@ -15,6 +15,7 @@ import { relations } from 'drizzle-orm'
 
 export const userRoleEnum = pgEnum('user_role', ['user', 'admin'])
 export const difficultyEnum = pgEnum('difficulty', ['easy', 'medium', 'hard'])
+export const tokenPurposeEnum = pgEnum('token_purpose', ['password_reset'])
 
 // ─── Users ────────────────────────────────────────────────────────────────────
 
@@ -52,6 +53,24 @@ export const refreshTokens = pgTable('refresh_tokens', {
 
 export const refreshTokensRelations = relations(refreshTokens, ({ one }) => ({
   user: one(users, { fields: [refreshTokens.userId], references: [users.id] }),
+}))
+
+// ─── Verification Tokens (password reset) ─────────────────────────────────────
+
+export const verificationTokens = pgTable('verification_tokens', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  purpose: tokenPurposeEnum('purpose').notNull(),
+  tokenHash: text('token_hash').notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  usedAt: timestamp('used_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
+export const verificationTokensRelations = relations(verificationTokens, ({ one }) => ({
+  user: one(users, { fields: [verificationTokens.userId], references: [users.id] }),
 }))
 
 // ─── Decks ────────────────────────────────────────────────────────────────────

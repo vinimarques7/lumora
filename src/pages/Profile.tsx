@@ -52,8 +52,8 @@ export default function Profile() {
   })
 
   useEffect(() => {
-    setDesignPrefs(getProfileDesignPrefs())
-  }, [])
+    if (user) setDesignPrefs(getProfileDesignPrefs(user.id))
+  }, [user?.id])
 
   const updateThemeMutation = useMutation({
     mutationFn: () => usersApi.updateMe(token!, { themeColor }),
@@ -78,9 +78,9 @@ export default function Profile() {
 
   function persistDesign(next: ProfileDesignPrefs) {
     setDesignPrefs(next)
-    saveProfileDesignPrefs(next)
+    saveProfileDesignPrefs(user!.id, next)
     if (next.mode === 'image') {
-      applyProfileDesignOverride()
+      applyProfileDesignOverride(user!.id)
     } else {
       // Restore global admin appearance so profile override doesn't linger
       const cached = qc.getQueryData<{ settings: SiteSettings }>(['site-settings'])

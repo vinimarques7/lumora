@@ -118,7 +118,12 @@ export function syncBrandFavicon(hex: string) {
   link.href = `data:image/svg+xml,${buildBrandFavicon(hex)}`
 }
 
-export function getProfileDesignPrefs(): ProfileDesignPrefs {
+/** Prefs are namespaced per user id so they don't leak between accounts sharing a device. */
+function profileDesignKey(userId: string) {
+  return `${PROFILE_DESIGN_KEY}_${userId}`
+}
+
+export function getProfileDesignPrefs(userId: string): ProfileDesignPrefs {
   const fallback: ProfileDesignPrefs = {
     mode: 'default',
     imageUrl: '',
@@ -126,7 +131,7 @@ export function getProfileDesignPrefs(): ProfileDesignPrefs {
   }
 
   try {
-    const raw = localStorage.getItem(PROFILE_DESIGN_KEY)
+    const raw = localStorage.getItem(profileDesignKey(userId))
     if (!raw) return fallback
     const parsed = JSON.parse(raw) as Partial<ProfileDesignPrefs>
 
@@ -139,13 +144,15 @@ export function getProfileDesignPrefs(): ProfileDesignPrefs {
   }
 }
 
-export function saveProfileDesignPrefs(prefs: ProfileDesignPrefs) {
-  localStorage.setItem(PROFILE_DESIGN_KEY, JSON.stringify(prefs))
+export function saveProfileDesignPrefs(userId: string, prefs: ProfileDesignPrefs) {
+  localStorage.setItem(profileDesignKey(userId), JSON.stringify(prefs))
 }
 
-/** Apply optional per-user visual override from Profile page. */
-export function applyProfileDesignOverride() {
-  const prefs = getProfileDesignPrefs()
+/** Apply optional per-user visual override from Profile page. No-op when logged out. */
+export function applyProfileDesignOverride(userId?: string | null) {
+  if (!userId) return
+
+  const prefs = getProfileDesignPrefs(userId)
   if (prefs.mode !== 'image' || !/^https?:\/\//i.test(prefs.imageUrl)) {
     return
   }

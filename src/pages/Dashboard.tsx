@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, BookOpen, Play, Edit2, Trash2, Globe, Lock, MoreVertical, Tag, Users, RotateCcw, Bookmark, BookmarkX } from 'lucide-react'
+import { Plus, BookOpen, Play, Edit2, Trash2, Globe, Lock, MoreVertical, Tag, Users, RotateCcw, Bookmark, BookmarkX, Search, X, Layers } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
 import { decksApi, savedDecksApi, type DeckWithCount } from '@/lib/api'
@@ -601,6 +601,9 @@ export default function Dashboard() {
   const { token } = useAuth()
   const qc = useQueryClient()
   const [launchDeckId, setLaunchDeckId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
+  const [groupByCategory, setGroupByCategory] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['decks'],
@@ -626,6 +629,29 @@ export default function Dashboard() {
   const rawDecks = data?.decks ?? []
   const { ordered: decks, dragHandlers, resetOrder } = useLocalOrder(rawDecks, 'sc_deck_order')
 
+  const usedCategories = [...new Set(rawDecks.map((d) => d.category).filter(Boolean))] as string[]
+  const hasActiveFilter = search.trim() !== '' || categoryFilter !== ''
+
+  const filteredDecks = decks.filter((deck) => {
+    const matchesSearch =
+      search.trim() === '' ||
+      deck.name.toLowerCase().includes(search.toLowerCase()) ||
+      deck.description?.toLowerCase().includes(search.toLowerCase())
+    const matchesCategory = categoryFilter === '' || deck.category === categoryFilter
+    return matchesSearch && matchesCategory
+  })
+
+  const groupedDecks = groupByCategory
+    ? Object.entries(
+        filteredDecks.reduce<Record<string, DeckWithCount[]>>((acc, deck) => {
+          const key = deck.category ?? 'Sem categoria'
+          acc[key] = acc[key] ?? []
+          acc[key].push(deck)
+          return acc
+        }, {}),
+      ).sort(([a], [b]) => a.localeCompare(b, 'pt-BR'))
+    : null
+
   const { data: savedData } = useQuery({
     queryKey: ['saved-decks'],
     queryFn: () => savedDecksApi.list(token!),
@@ -649,12 +675,14 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold">Meus Decks</h1>
           <p className="text-muted-foreground mt-1">
             {rawDecks.length > 0
-              ? `${pluralize(rawDecks.length, 'deck', 'decks')} — arraste para reordenar`
+              ? hasActiveFilter
+                ? `${pluralize(filteredDecks.length, 'deck', 'decks')} encontrado(s) de ${rawDecks.length}`
+                : `${pluralize(rawDecks.length, 'deck', 'decks')} — arraste para reordenar`
               : 'Nenhum deck ainda'}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {rawDecks.length > 1 && (
+          {rawDecks.length > 1 && !hasActiveFilter && (
             <Button variant="ghost" size="sm" onClick={resetOrder} title="Resetar ordem">
               <RotateCcw className="h-4 w-4" />
             </Button>
@@ -662,6 +690,55 @@ export default function Dashboard() {
           <CreateDeckDialog onCreated={() => qc.invalidateQueries({ queryKey: ['decks'] })} />
         </div>
       </div>
+
+      {rawDecks.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+          <div className="relative flex-1 min-w-[180px]">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar deck..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 h-9"
+            />
+          </div>
+          <Select value={categoryFilter || 'all'} onValueChange={(v) => setCategoryFilter(v === 'all' ? '' : v)}>
+            <SelectTrigger className="w-[180px] h-9">
+              <SelectValue placeholder="Categoria" />
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              <SelectItem value="all">Todas as categorias</SelectItem>
+              {usedCategories.map((cat) => (
+                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant={groupByCategory ? 'default' : 'outline'}
+            size="sm"
+            className="h-9"
+            onClick={() => setGroupByCategory((v) => !v)}
+            title="Agrupar por tema"
+          >
+            <Layers className="h-4 w-4" />
+            Agrupar por tema
+          </Button>
+          {hasActiveFilter && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9"
+              onClick={() => {
+                setSearch('')
+                setCategoryFilter('')
+              }}
+            >
+              <X className="h-4 w-4" />
+              Limpar
+            </Button>
+          )}
+        </div>
+      )}
 
       {isLoading ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -685,9 +762,39 @@ export default function Dashboard() {
           <h2 className="text-xl font-semibold">Nenhum deck ainda</h2>
           <p className="text-muted-foreground">Crie seu primeiro deck para começar a estudar.</p>
         </div>
+      ) : filteredDecks.length === 0 ? (
+        <div className="text-center py-24 space-y-4">
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
+            <Search className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h2 className="text-xl font-semibold">Nenhum deck encontrado</h2>
+          <p className="text-muted-foreground">Tente outro termo de busca ou categoria.</p>
+        </div>
+      ) : groupedDecks ? (
+        <div className="space-y-8">
+          {groupedDecks.map(([category, categoryDecks]) => (
+            <div key={category}>
+              <div className="flex items-center gap-2 mb-4">
+                <h2 className="text-lg font-semibold">{category}</h2>
+                <span className="text-sm text-muted-foreground">({categoryDecks.length})</span>
+              </div>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {categoryDecks.map((deck) => (
+                  <DeckCard
+                    key={deck.id}
+                    deck={deck}
+                    onDelete={confirmDelete}
+                    onLaunch={setLaunchDeckId}
+                    dragProps={dragHandlers(deck.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {decks.map((deck) => (
+          {filteredDecks.map((deck) => (
             <DeckCard
               key={deck.id}
               deck={deck}

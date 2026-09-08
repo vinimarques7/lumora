@@ -4,9 +4,11 @@ import { Toaster } from 'sonner'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { adminApi } from '@/lib/api'
+import { useAuth } from '@/contexts/AuthContext'
 import { applyProfileDesignOverride, applySiteAppearance, resolveBrandName, syncBrandMetadata } from '@/lib/theme'
 
 export function Layout() {
+  const { user } = useAuth()
   const { data } = useQuery({
     queryKey: ['site-settings'],
     queryFn: () => adminApi.getSettings(),
@@ -17,9 +19,9 @@ export function Layout() {
 
   useEffect(() => {
     applySiteAppearance(data?.settings ?? {})
-    applyProfileDesignOverride()
+    applyProfileDesignOverride(user?.id)
     syncBrandMetadata(brandTitle)
-  }, [brandTitle, data?.settings])
+  }, [brandTitle, data?.settings, user?.id])
 
   return (
     <div className="min-h-screen flex flex-col app-shell">

@@ -13,6 +13,8 @@ import QuizGame from '@/pages/QuizGame'
 import Profile from '@/pages/Profile'
 import AdminPage from '@/pages/AdminPage'
 import Explore from '@/pages/Explore'
+import ForgotPassword from '@/pages/ForgotPassword'
+import ResetPassword from '@/pages/ResetPassword'
 
 function NotFound() {
   return (
@@ -33,6 +35,8 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/explore" element={<Explore />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />

@@ -4,9 +4,12 @@ import { z } from 'zod'
 import argon2 from 'argon2'
 import { eq, and } from 'drizzle-orm'
 import { db } from '../_db/index.js'
-import { users, refreshTokens } from '../_db/schema.js'
+import { users, refreshTokens, verificationTokens } from '../_db/schema.js'
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../_lib/jwt.js'
-import { rateLimitLogin } from '../_middleware/rateLimit.js'
+import { rateLimitLogin, rateLimitEmail } from '../_middleware/rateLimit.js'
+import { isEmailDeliverable } from '../_lib/mxCheck.js'
+import { generateRawToken, hashToken } from '../_lib/tokens.js'
+import { sendPasswordResetEmail } from '../_lib/email.js'
 
 export const authRouter = new Hono()
 
@@ -19,6 +22,9 @@ const COOKIE_OPTIONS = [
   `Max-Age=${7 * 24 * 60 * 60}`,
   'Path=/',
 ].join('; ')
+
+const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:5173'
+const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000 // 1h
 
 // ─── POST /api/auth/register ──────────────────────────────────────────────────
 
@@ -39,6 +45,11 @@ authRouter.post(
     const existing = await db.select({ id: users.id }).from(users).where(eq(users.email, email))
     if (existing.length > 0) {
       return c.json({ error: 'E-mail já cadastrado.' }, 409)
+    }
+
+    const domainOk = await isEmailDeliverable(email)
+    if (!domainOk) {
+      return c.json({ error: 'Domínio de e-mail inválido ou inexistente.' }, 400)
     }
 
     const passwordHash = await argon2.hash(password, { type: argon2.argon2id })
@@ -62,6 +73,7 @@ authRouter.post(
     return c.json({ accessToken, user }, 201)
   },
 )
+
 
 // ─── POST /api/auth/login ─────────────────────────────────────────────────────
 
@@ -111,6 +123,8 @@ authRouter.post(
         email: user.email,
         role: user.role,
         themeColor: user.themeColor,
+        displayName: user.displayName,
+        occupation: user.occupation,
       },
     })
   },
@@ -164,7 +178,14 @@ authRouter.post('/refresh', async (c) => {
 
   return c.json({
     accessToken: newAccessToken,
-    user: { id: user.id, email: user.email, role: user.role, themeColor: user.themeColor },
+    user: {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      themeColor: user.themeColor,
+      displayName: user.displayName,
+      occupation: user.occupation,
+    },
   })
 })
 
@@ -194,3 +215,69 @@ authRouter.post('/logout', async (c) => {
 
   return c.json({ message: 'Logout realizado com sucesso.' })
 })
+
+// ─── POST /api/auth/forgot-password ───────────────────────────────────────────
+
+authRouter.post(
+  '/forgot-password',
+  rateLimitEmail,
+  zValidator('json', z.object({ email: z.string().email().max(255).toLowerCase() })),
+  async (c) => {
+    const { email } = c.req.valid('json')
+
+    const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1)
+
+    // Always return the same generic response — never reveal whether the email exists.
+    if (user) {
+      const rawToken = generateRawToken()
+      await db.insert(verificationTokens).values({
+        userId: user.id,
+        purpose: 'password_reset',
+        tokenHash: hashToken(rawToken),
+        expiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS),
+      })
+      await sendPasswordResetEmail(user.email, `${FRONTEND_URL}/reset-password?token=${rawToken}`).catch((e) =>
+        console.error('[auth/forgot-password] Falha ao enviar e-mail:', e),
+      )
+    }
+
+    return c.json({ message: 'Se o e-mail existir, enviamos um link de redefinição de senha.' })
+  },
+)
+
+// ─── POST /api/auth/reset-password ────────────────────────────────────────────
+
+authRouter.post(
+  '/reset-password',
+  zValidator(
+    'json',
+    z.object({
+      token: z.string().min(1),
+      newPassword: z.string().min(8).max(128),
+    }),
+  ),
+  async (c) => {
+    const { token, newPassword } = c.req.valid('json')
+    const tokenHash = hashToken(token)
+
+    const [record] = await db
+      .select()
+      .from(verificationTokens)
+      .where(and(eq(verificationTokens.tokenHash, tokenHash), eq(verificationTokens.purpose, 'password_reset')))
+      .limit(1)
+
+    if (!record || record.usedAt || record.expiresAt < new Date()) {
+      return c.json({ error: 'Link de redefinição inválido ou expirado.' }, 400)
+    }
+
+    const passwordHash = await argon2.hash(newPassword, { type: argon2.argon2id })
+
+    await db.update(users).set({ passwordHash }).where(eq(users.id, record.userId))
+    await db.update(verificationTokens).set({ usedAt: new Date() }).where(eq(verificationTokens.id, record.id))
+
+    // Revoke all active sessions — force re-login everywhere after a password reset.
+    await db.update(refreshTokens).set({ revoked: true }).where(eq(refreshTokens.userId, record.userId))
+
+    return c.json({ message: 'Senha redefinida com sucesso.' })
+  },
+)
