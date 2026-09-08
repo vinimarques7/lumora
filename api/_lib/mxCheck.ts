@@ -44,8 +44,6 @@ interface AbstractApiResponse {
   is_mx_found?: { value: boolean }
 }
 
-const IS_PROD = process.env.NODE_ENV === 'production'
-
 /**
  * Verifies whether an email address is likely to exist and receive mail.
  *
@@ -67,11 +65,6 @@ export async function isEmailDeliverable(email: string): Promise<boolean> {
 
   const apiKey = process.env.ABSTRACT_API_KEY
   if (!apiKey) {
-    if (IS_PROD) {
-      console.error('[email-verify] ABSTRACT_API_KEY ausente em produção. Cadastro deve bloquear sem validação de e-mail robusta.')
-      return false
-    }
-
     console.warn('[email-verify] ABSTRACT_API_KEY não configurada — usando checagem de MX apenas.')
     return domainHasMxRecord(normalized)
   }
@@ -88,7 +81,7 @@ export async function isEmailDeliverable(email: string): Promise<boolean> {
 
     if (data.is_valid_format?.value === false) return false
     if (data.is_mx_found?.value === false) return false
-    if (data.deliverability !== 'DELIVERABLE') return false
+    if (data.deliverability === 'UNDELIVERABLE') return false
 
     return true
   } catch (e) {
