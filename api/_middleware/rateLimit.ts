@@ -27,7 +27,7 @@ function getRateLimiter(prefix: string, limit: number, window: `${number} ${'s' 
     redis,
     limiter: Ratelimit.slidingWindow(limit, window),
     analytics: false,
-    prefix: `studycenter:ratelimit:${prefix}`,
+    prefix: `lumora:ratelimit:${prefix}`,
   })
   limiters.set(prefix, limiter)
   return limiter

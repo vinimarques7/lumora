@@ -8,6 +8,8 @@ import { users } from '../_db/schema.js'
 import { requireAuth, requireAdmin } from '../_middleware/auth.js'
 
 export const usersRouter = new Hono()
+const REFRESH_COOKIE = 'refresh_token'
+const IS_PROD = process.env.NODE_ENV === 'production'
 
 // ─── GET /api/users/me ────────────────────────────────────────────────────────
 
@@ -84,6 +86,46 @@ usersRouter.patch(
       .returning({ id: users.id, email: users.email, role: users.role, themeColor: users.themeColor, displayName: users.displayName, occupation: users.occupation })
 
     return c.json({ user: updated })
+  },
+)
+
+// ─── DELETE /api/users/me ────────────────────────────────────────────────────
+
+usersRouter.delete(
+  '/me',
+  requireAuth,
+  zValidator(
+    'json',
+    z.object({
+      username: z.string().min(1).max(100),
+      password: z.string().min(1).max(128),
+    }),
+  ),
+  async (c) => {
+    const { sub } = c.get('user')
+    const { username, password } = c.req.valid('json')
+
+    const [user] = await db.select().from(users).where(eq(users.id, sub!)).limit(1)
+    if (!user) return c.json({ error: 'Usuário não encontrado.' }, 404)
+
+    const expectedUsername = (user.displayName ?? user.email).trim().toLowerCase()
+    if (username.trim().toLowerCase() !== expectedUsername) {
+      return c.json({ error: 'Nome de usuário incorreto.' }, 400)
+    }
+
+    const validPassword = await argon2.verify(user.passwordHash, password)
+    if (!validPassword) {
+      return c.json({ error: 'Senha incorreta.' }, 400)
+    }
+
+    await db.delete(users).where(eq(users.id, sub!))
+
+    c.header(
+      'Set-Cookie',
+      `${REFRESH_COOKIE}=; HttpOnly; ${IS_PROD ? 'Secure; ' : ''}SameSite=Strict; Max-Age=0; Path=/`,
+    )
+
+    return c.json({ message: 'Conta deletada com sucesso.' })
   },
 )
 

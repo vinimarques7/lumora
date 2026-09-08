@@ -89,6 +89,14 @@ export const usersApi = {
       body: JSON.stringify({ role }),
       token,
     }),
+
+  deleteMe: (token: string, username: string, password: string) =>
+    request<{ message: string }>('/users/me', {
+      method: 'DELETE',
+      body: JSON.stringify({ username, password }),
+      token,
+      credentials: 'include',
+    }),
 }
 
 // ─── Decks ────────────────────────────────────────────────────────────────────
