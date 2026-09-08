@@ -1,13 +1,22 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Palette, KeyRound, UserCircle, Image as ImageIcon } from 'lucide-react'
+import { Palette, KeyRound, UserCircle, Image as ImageIcon, TriangleAlert } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { usersApi, type SiteSettings } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   applyProfileDesignOverride,
   applySiteAppearance,
@@ -40,7 +49,8 @@ const BG_PRESETS = [
 ] as const
 
 export default function Profile() {
-  const { user, token, updateUser } = useAuth()
+  const { user, token, updateUser, logout } = useAuth()
+  const navigate = useNavigate()
   const qc = useQueryClient()
   const [themeColor, setThemeColor] = useState(user?.themeColor ?? '#6366f1')
   const [currentPassword, setCurrentPassword] = useState('')
@@ -50,6 +60,10 @@ export default function Profile() {
     imageUrl: '',
     overlay: '0.45',
   })
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleteAuthOpen, setDeleteAuthOpen] = useState(false)
+  const [deleteUsername, setDeleteUsername] = useState('')
+  const [deletePassword, setDeletePassword] = useState('')
 
   useEffect(() => {
     if (user) setDesignPrefs(getProfileDesignPrefs(user.id))
@@ -74,7 +88,22 @@ export default function Profile() {
     onError: (e: Error) => toast.error(e.message),
   })
 
+  const deleteAccountMutation = useMutation({
+    mutationFn: () => usersApi.deleteMe(token!, deleteUsername, deletePassword),
+    onSuccess: async () => {
+      toast.success('Conta deletada com sucesso.')
+      setDeleteAuthOpen(false)
+      setDeletePassword('')
+      setDeleteUsername('')
+      await logout()
+      navigate('/login', { replace: true })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
   if (!user) return null
+
+  const defaultUsername = user.displayName?.trim() || user.email
 
   function persistDesign(next: ProfileDesignPrefs) {
     setDesignPrefs(next)
@@ -295,6 +324,95 @@ export default function Profile() {
           </Button>
         </CardContent>
       </Card>
+
+      <Card className="border-destructive/40">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg text-destructive">
+            <TriangleAlert className="h-5 w-5" />
+            Zona de perigo
+          </CardTitle>
+          <CardDescription>
+            Excluir sua conta é permanente e removerá seus decks, cards e histórico.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="destructive" onClick={() => setDeleteConfirmOpen(true)}>
+            Deletar conta
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Tem certeza que deseja apagar sua conta?</DialogTitle>
+            <DialogDescription>
+              Esta ação não pode ser desfeita. Todos os seus dados serão removidos.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setDeleteConfirmOpen(false)
+                setDeleteUsername(defaultUsername)
+                setDeleteAuthOpen(true)
+              }}
+            >
+              Sim, continuar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteAuthOpen} onOpenChange={setDeleteAuthOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirme sua identidade</DialogTitle>
+            <DialogDescription>
+              Digite seu nome de usuário e sua senha para confirmar a exclusão da conta.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="delete-username">Nome de usuário</Label>
+              <Input
+                id="delete-username"
+                value={deleteUsername}
+                onChange={(e) => setDeleteUsername(e.target.value)}
+                placeholder={defaultUsername}
+              />
+              <p className="text-xs text-muted-foreground">
+                Use o mesmo nome exibido no seu perfil (ou seu e-mail, se não tiver nome).
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="delete-password">Senha</Label>
+              <Input
+                id="delete-password"
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteAuthOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteAccountMutation.isPending || !deleteUsername.trim() || !deletePassword}
+              onClick={() => deleteAccountMutation.mutate()}
+            >
+              {deleteAccountMutation.isPending ? 'Deletando...' : 'Confirmar e deletar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
