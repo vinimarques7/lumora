@@ -2,18 +2,18 @@ const BASE = '/api'
 const TOKEN_KEY = 'sc_access_token'
 
 function getStoredToken(): string | null {
-  if (typeof window === 'undefined') return null
-  return sessionStorage.getItem(TOKEN_KEY)
+  if (typeof globalThis === 'undefined' || !('sessionStorage' in globalThis)) return null
+  return globalThis.sessionStorage.getItem(TOKEN_KEY)
 }
 
 function setStoredToken(token: string): void {
-  if (typeof window === 'undefined') return
-  sessionStorage.setItem(TOKEN_KEY, token)
+  if (typeof globalThis === 'undefined' || !('sessionStorage' in globalThis)) return
+  globalThis.sessionStorage.setItem(TOKEN_KEY, token)
 }
 
 function clearStoredToken(): void {
-  if (typeof window === 'undefined') return
-  sessionStorage.removeItem(TOKEN_KEY)
+  if (typeof globalThis === 'undefined' || !('sessionStorage' in globalThis)) return
+  globalThis.sessionStorage.removeItem(TOKEN_KEY)
 }
 
 async function refreshAccessToken(): Promise<string> {
@@ -24,7 +24,7 @@ async function refreshAccessToken(): Promise<string> {
   })
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: res.statusText }))
+    const body = (await res.json().catch(() => ({ error: res.statusText }))) as { error?: string }
     throw new ApiError(res.status, body.error ?? 'Sessão expirada')
   }
 
@@ -66,7 +66,7 @@ async function request<T>(
   }
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: res.statusText }))
+    const body = (await res.json().catch(() => ({ error: res.statusText }))) as { error?: string }
     throw new ApiError(res.status, body.error ?? 'Erro desconhecido')
   }
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/select'
 import { pluralize } from '@/lib/utils'
 import { useLocalOrder } from '@/lib/useLocalOrder'
+import { getCardFormDefaults, type CardFormData } from '@/lib/cardForm'
 
 const DIFFICULTY_LABEL = { easy: '🟢 Fácil', medium: '🟡 Médio', hard: '🔴 Difícil' }
 
@@ -119,15 +120,6 @@ function ImageDropField({
   )
 }
 
-interface CardFormData {
-  question: string
-  answer: string
-  explanation: string
-  analogy: string
-  imageUrl: string
-  difficulty: 'easy' | 'medium' | 'hard'
-}
-
 function CardFormDialog({
   open,
   onOpenChange,
@@ -142,14 +134,11 @@ function CardFormDialog({
   onSaved: () => void
 }) {
   const { token } = useAuth()
-  const [form, setForm] = useState<CardFormData>({
-    question: card?.question ?? '',
-    answer: card?.answer ?? '',
-    explanation: card?.explanation ?? '',
-    analogy: card?.analogy ?? '',
-    imageUrl: card?.imageUrl ?? '',
-    difficulty: card?.difficulty ?? 'medium',
-  })
+  const [form, setForm] = useState<CardFormData>(getCardFormDefaults(card))
+
+  useEffect(() => {
+    setForm(getCardFormDefaults(card))
+  }, [card, open])
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -270,32 +259,39 @@ function FlashCard({
   onToggle,
   onEdit,
   onDelete,
+  canEdit,
 }: {
   card: Card
   expanded: boolean
   onToggle: () => void
   onEdit: () => void
   onDelete: () => void
+  canEdit: boolean
 }) {
+  const [previewImage, setPreviewImage] = useState<string | null>(null)
+
   return (
-    <UICard className="group">
+    <>
+      <UICard className="group">
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <p className="font-medium leading-snug flex-1">{card.question}</p>
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={onEdit}
-              className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={onDelete}
-              className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </div>
+          {canEdit && (
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={onEdit}
+                className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={onDelete}
+                className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 mt-1">
           <Badge variant="secondary" className="text-xs">
@@ -343,22 +339,43 @@ function FlashCard({
               </div>
             )}
             {card.imageUrl && (
-              <img
-                src={card.imageUrl}
-                alt="Card image"
-                className="rounded-lg max-h-48 object-contain"
-              />
+              <button
+                type="button"
+                onClick={() => setPreviewImage(card.imageUrl)}
+                className="block w-full text-left"
+              >
+                <img
+                  src={card.imageUrl}
+                  alt="Card image"
+                  className="rounded-lg max-h-80 w-full object-contain border border-border bg-muted/30 cursor-zoom-in transition-transform hover:scale-[1.01]"
+                />
+              </button>
             )}
           </div>
         )}
       </CardContent>
     </UICard>
+
+      <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+        <DialogContent className="max-w-4xl p-2 sm:p-4">
+          <div className="relative">
+            {previewImage && (
+              <img
+                src={previewImage}
+                alt="Preview da imagem do card"
+                className="max-h-[80vh] w-full rounded-lg object-contain bg-muted/20"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
 export default function DeckPage() {
   const { id } = useParams<{ id: string }>()
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const qc = useQueryClient()
   const [formOpen, setFormOpen] = useState(false)
   const [editCard, setEditCard] = useState<Card | undefined>()
@@ -409,6 +426,7 @@ export default function DeckPage() {
   }
 
   const deck = data?.deck
+  const canEditDeck = !!user && !!deck && user.id === deck.ownerId
 
   if (!deck) return <div className="container py-8">Deck não encontrado.</div>
 
@@ -452,16 +470,18 @@ export default function DeckPage() {
                 </Button>
               </>
             )}
-            <Button
-              size="sm"
-              onClick={() => {
-                setEditCard(undefined)
-                setFormOpen(true)
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              Novo card
-            </Button>
+            {canEditDeck && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  setEditCard(undefined)
+                  setFormOpen(true)
+                }}
+              >
+                <Plus className="h-4 w-4" />
+                Novo card
+              </Button>
+            )}
             {rawCards.length > 1 && (
               <Button size="sm" variant="ghost" onClick={resetOrder} title="Resetar ordem">
                 <RotateCcw className="h-4 w-4" />
@@ -501,6 +521,7 @@ export default function DeckPage() {
                   onToggle={() => setExpandedCardId((prev) => (prev === card.id ? null : card.id))}
                   onEdit={() => handleEdit(card)}
                   onDelete={() => handleDelete(card.id)}
+                  canEdit={canEditDeck}
                 />
               </div>
             )
