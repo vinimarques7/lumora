@@ -6,6 +6,10 @@ import { useAuth } from '@/contexts/AuthContext'
 import { decksApi, type Card } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card as UICard, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+} from '@/components/ui/dialog'
 import { Progress } from '@/components/ui/progress'
 import { toast } from 'sonner'
 
@@ -21,6 +25,7 @@ export default function HoldAndAnswerGame() {
 
   // Multi-deck: ?decks=id1,id2,id3
   const multiIds = searchParams.get('decks')?.split(',').filter(Boolean) ?? []
+  const selectedIds = searchParams.get('selected')?.split(',').filter(Boolean) ?? []
   const isMulti = multiIds.length > 0
   const primaryId = isMulti ? multiIds[0] : (id ?? '')
   const countParam = parseInt(searchParams.get('count') ?? '0', 10)
@@ -42,9 +47,10 @@ export default function HoldAndAnswerGame() {
 
   const deck = isMulti ? multiQuery.data?.[0]?.deck : singleQuery.data?.deck
   const allCards: Card[] = isMulti
-    ? (multiQuery.data ?? []).flatMap((r) => r.cards).sort(() => Math.random() - 0.5)
+    ? (multiQuery.data ?? []).flatMap((r) => r.cards)
     : (singleQuery.data?.cards ?? [])
-  const cards = countParam > 0 ? allCards.slice(0, countParam) : allCards
+  const filteredCards = selectedIds.length ? allCards.filter((card) => selectedIds.includes(card.id)) : allCards
+  const cards = countParam > 0 ? filteredCards.slice(0, countParam) : filteredCards
 
   const deckName = isMulti
     ? (multiQuery.data ?? []).map((r) => r.deck.name).join(' + ')
@@ -62,6 +68,7 @@ export default function HoldAndAnswerGame() {
   const [flipped, setFlipped] = useState(false)
   const [results, setResults] = useState<RoundResult[]>([])
   const [finished, setFinished] = useState(false)
+  const [previewImage, setPreviewImage] = useState<string | null>(null)
 
   if (isLoading) {
     return (
@@ -193,16 +200,39 @@ export default function HoldAndAnswerGame() {
                   )}
 
                   {current.imageUrl && (
-                    <img
-                      src={current.imageUrl}
-                      alt="Card"
-                      className="rounded-lg max-h-32 object-contain"
-                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setPreviewImage(current.imageUrl)
+                      }}
+                      className="block mx-auto"
+                    >
+                      <img
+                        src={current.imageUrl}
+                        alt="Card"
+                        className="rounded-lg max-h-52 w-full object-contain border border-border bg-muted/30 cursor-zoom-in mx-auto"
+                      />
+                    </button>
                   )}
                 </CardContent>
               </UICard>
             </div>
           </div>
+
+          <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+            <DialogContent className="max-w-4xl p-2 sm:p-4">
+              <div className="relative">
+                {previewImage && (
+                  <img
+                    src={previewImage}
+                    alt="Preview da imagem do card"
+                    className="max-h-[80vh] w-full rounded-lg object-contain bg-muted/20"
+                  />
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <div className="grid grid-cols-2 gap-3">
             <Button

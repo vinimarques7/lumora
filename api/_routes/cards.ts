@@ -24,6 +24,7 @@ cardsRouter.post(
       analogy: z.string().max(2000).optional(),
       imageUrl: z.string().url().nullable().optional(),
       difficulty: z.enum(['easy', 'medium', 'hard']).optional().default('medium'),
+      cardType: z.enum(['standard', 'true_false']).optional().default('standard'),
     }),
   ),
   async (c) => {
@@ -64,6 +65,7 @@ cardsRouter.patch(
       analogy: z.string().max(2000).optional(),
       imageUrl: z.string().url().nullable().optional(),
       difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+      cardType: z.enum(['standard', 'true_false']).optional(),
     }),
   ),
   async (c) => {

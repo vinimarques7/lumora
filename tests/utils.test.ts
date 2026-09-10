@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { calcQuizPoints, hexToHslString } from '@/lib/utils'
+import { coerceTrueFalseAnswer, normalizeTrueFalseValue } from '@/lib/quiz'
 import { isEmailDeliverable } from '@/../api/_lib/mxCheck'
 
 describe('calcQuizPoints', () => {
@@ -22,6 +23,20 @@ describe('hexToHslString', () => {
   it('converts valid hex color', () => {
     const hsl = hexToHslString('#6366f1')
     expect(hsl).toContain('%')
+  })
+})
+
+describe('true_false helpers', () => {
+  it('normalizes boolean aliases to canonical labels', () => {
+    expect(normalizeTrueFalseValue('true')).toBe('Verdadeiro')
+    expect(normalizeTrueFalseValue('falso')).toBe('Falso')
+    expect(normalizeTrueFalseValue('v')).toBe('Verdadeiro')
+  })
+
+  it('coerces boolean answers to canonical output', () => {
+    expect(coerceTrueFalseAnswer('verdadeiro')).toBe('Verdadeiro')
+    expect(coerceTrueFalseAnswer('false')).toBe('Falso')
+    expect(coerceTrueFalseAnswer('x')).toBe('Verdadeiro')
   })
 })
 

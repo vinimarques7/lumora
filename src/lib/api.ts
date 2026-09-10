@@ -149,6 +149,9 @@ export const usersApi = {
 
 // ─── Decks ────────────────────────────────────────────────────────────────────
 
+export type CardType = 'standard' | 'true_false'
+export type DeckType = 'standard' | 'true_false'
+
 export const decksApi = {
   list: (token: string) => request<{ decks: DeckWithCount[] }>('/decks', { token }),
 
@@ -159,17 +162,17 @@ export const decksApi = {
 
   getMulti: (token: string, ids: string[]) =>
     Promise.all(ids.map((id) => request<{ deck: Deck; cards: Card[] }>(`/decks/${id}`, { token }))),
-  create: (token: string, body: { name: string; description?: string; isPublic?: boolean; category?: string | null; extraCategories?: string[]; deckDifficulty?: string }) =>
+  create: (token: string, body: { name: string; description?: string; isPublic?: boolean; category?: string | null; extraCategories?: string[]; deckDifficulty?: string; deckType?: DeckType }) =>
     request<{ deck: Deck }>('/decks', { method: 'POST', body: JSON.stringify(body), token }),
 
-  update: (token: string, id: string, body: { name?: string; description?: string; isPublic?: boolean; pinEmoji?: string | null; pinLabel?: string | null; category?: string | null; extraCategories?: string[] | null; deckDifficulty?: string }) =>
+  update: (token: string, id: string, body: { name?: string; description?: string; isPublic?: boolean; pinEmoji?: string | null; pinLabel?: string | null; category?: string | null; extraCategories?: string[] | null; deckDifficulty?: string; deckType?: DeckType }) =>
     request<{ deck: Deck }>(`/decks/${id}`, { method: 'PATCH', body: JSON.stringify(body), token }),
 
   delete: (token: string, id: string) =>
     request(`/decks/${id}`, { method: 'DELETE', token }),
 
-  getQuiz: (token: string, id: string, count = 10) =>
-    request<{ questions: QuizQuestion[]; deckName: string }>(`/decks/${id}/quiz?count=${count}`, { token }),
+  getQuiz: (token: string, id: string, count = 10, selected: string[] = []) =>
+    request<{ questions: QuizQuestion[]; deckName: string }>(`/decks/${id}/quiz?count=${count}${selected.length ? `&selected=${selected.join(',')}` : ''}`, { token }),
 
   saveSession: (token: string, deckId: string, body: GameSessionPayload) =>
     request(`/decks/${deckId}/sessions`, { method: 'POST', body: JSON.stringify(body), token }),
@@ -220,6 +223,7 @@ export interface Deck {
   category: string | null
   extraCategories: string[] | null
   deckDifficulty: 'easy' | 'medium' | 'hard'
+  deckType: DeckType
   creatorName?: string | null
   creatorEmail?: string | null
   savedAt?: string
@@ -241,6 +245,7 @@ export interface Card {
   analogy: string | null
   imageUrl: string | null
   difficulty: 'easy' | 'medium' | 'hard'
+  cardType: CardType
   position: number
   createdAt: string
   updatedAt: string
@@ -254,6 +259,7 @@ export type NewCard = {
   analogy?: string
   imageUrl?: string | null
   difficulty?: 'easy' | 'medium' | 'hard'
+  cardType?: CardType
 }
 
 export interface SiteSettings {

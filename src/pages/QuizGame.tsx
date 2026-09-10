@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card as UICard, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { calcQuizPoints } from '@/lib/utils'
+import { buildQuizOptions, getCardAnswerLabel, normalizeTrueFalseValue } from '@/lib/quiz'
 
 const TIME_PER_QUESTION_MS = 20_000
 
@@ -22,18 +23,15 @@ interface AnswerRecord {
 function generateQuestions(allCards: Card[], count: number): QuizQuestion[] {
   const shuffled = [...allCards].sort(() => Math.random() - 0.5).slice(0, count)
   return shuffled.map((card) => {
-    const distractors = allCards
-      .filter((c) => c.id !== card.id)
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 3)
-      .map((c) => c.answer)
-    const options = [...distractors, card.answer].sort(() => Math.random() - 0.5)
+    const correctAnswer = getCardAnswerLabel(card)
+    const options = buildQuizOptions(card, allCards)
+
     return {
       id: card.id,
       question: card.question,
       explanation: card.explanation,
       analogy: card.analogy,
-      correctAnswer: card.answer,
+      correctAnswer,
       options,
     }
   })
@@ -45,14 +43,15 @@ export default function QuizGame() {
   const { token } = useAuth()
 
   const multiIds = searchParams.get('decks')?.split(',').filter(Boolean) ?? []
+  const selectedIds = searchParams.get('selected')?.split(',').filter(Boolean) ?? []
   const isMulti = multiIds.length > 0
   const primaryId = isMulti ? multiIds[0] : (id ?? '')
   const count = Math.max(5, Math.min(50, parseInt(searchParams.get('count') ?? '10', 10)))
 
   // Single-deck: use server-generated quiz
   const singleQuery = useQuery({
-    queryKey: ['quiz', primaryId, count],
-    queryFn: () => decksApi.getQuiz(token!, primaryId, count),
+    queryKey: ['quiz', primaryId, count, selectedIds.join(',')],
+    queryFn: () => decksApi.getQuiz(token!, primaryId, count, selectedIds),
     enabled: !!token && !!primaryId && !isMulti,
   })
 
@@ -69,11 +68,16 @@ export default function QuizGame() {
   const questions: QuizQuestion[] = useMemo(() => {
     if (isMulti) {
       const allCards = (multiQuery.data ?? []).flatMap((r) => r.cards)
-      if (allCards.length < 2) return []
-      return generateQuestions(allCards, count)
+      const filteredCards = selectedIds.length ? allCards.filter((card) => selectedIds.includes(card.id)) : allCards
+      if (filteredCards.length < 2) return []
+      return generateQuestions(filteredCards, Math.min(count, filteredCards.length))
     }
-    return singleQuery.data?.questions ?? []
-  }, [isMulti, multiQuery.data, singleQuery.data])
+
+    if (!singleQuery.data?.questions) return []
+    const serverQuestions = singleQuery.data.questions
+    if (!selectedIds.length) return serverQuestions
+    return serverQuestions.filter((question) => selectedIds.includes(question.id))
+  }, [isMulti, multiQuery.data, selectedIds, singleQuery.data, count])
 
   const deckName = isMulti
     ? (multiQuery.data ?? []).map((r) => r.deck.name).join(' + ')
@@ -123,7 +127,10 @@ export default function QuizGame() {
 
     setLocked(true)
 
-    const isCorrect = selected === current.correctAnswer
+    const normalizedSelected = normalizeTrueFalseValue(selected)
+    const normalizedCorrect = normalizeTrueFalseValue(current.correctAnswer)
+    const isCorrect = selected === current.correctAnswer ||
+      (!!normalizedSelected && !!normalizedCorrect && normalizedSelected === normalizedCorrect)
     const points = isCorrect ? calcQuizPoints(timeLeft, TIME_PER_QUESTION_MS) : 0
 
     const nextAnswers = [

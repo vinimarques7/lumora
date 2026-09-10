@@ -207,6 +207,7 @@ function CreateDeckDialog({ onCreated }: { onCreated: () => void }) {
   const [category, setCategory] = useState('')
   const [extraCategories, setExtraCategories] = useState<string[]>([])
   const [deckDifficulty, setDeckDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium')
+  const [deckType, setDeckType] = useState<'standard' | 'true_false'>('standard')
   const [extraOpen, setExtraOpen] = useState(false)
   const [extraSearch, setExtraSearch] = useState('')
 
@@ -219,6 +220,7 @@ function CreateDeckDialog({ onCreated }: { onCreated: () => void }) {
         category: category || null,
         extraCategories: extraCategories.length ? extraCategories : undefined,
         deckDifficulty,
+        deckType,
       }),
     onSuccess: () => {
       toast.success('Deck criado!')
@@ -228,6 +230,7 @@ function CreateDeckDialog({ onCreated }: { onCreated: () => void }) {
       setCategory('')
       setExtraCategories([])
       setDeckDifficulty('medium')
+      setDeckType('standard')
       onCreated()
     },
     onError: () => toast.error('Erro ao criar deck.'),
@@ -283,6 +286,18 @@ function CreateDeckDialog({ onCreated }: { onCreated: () => void }) {
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Tipo do deck</Label>
+              <Select value={deckType} onValueChange={(v) => setDeckType(v as 'standard' | 'true_false')}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="standard">Padrão</SelectItem>
+                  <SelectItem value="true_false">Verdadeiro ou Falso</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label>Categoria principal</Label>
               <Select value={category} onValueChange={setCategory}>

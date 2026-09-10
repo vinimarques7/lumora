@@ -15,6 +15,8 @@ import { relations } from 'drizzle-orm'
 
 export const userRoleEnum = pgEnum('user_role', ['user', 'admin'])
 export const difficultyEnum = pgEnum('difficulty', ['easy', 'medium', 'hard'])
+export const cardTypeEnum = pgEnum('card_type', ['standard', 'true_false'])
+export const deckTypeEnum = pgEnum('deck_type', ['standard', 'true_false'])
 export const tokenPurposeEnum = pgEnum('token_purpose', ['password_reset'])
 
 // ─── Users ────────────────────────────────────────────────────────────────────
@@ -88,6 +90,7 @@ export const decks = pgTable('decks', {
   category: varchar('category', { length: 60 }),
   extraCategories: text('extra_categories').array(),
   deckDifficulty: difficultyEnum('deck_difficulty').notNull().default('medium'),
+  deckType: deckTypeEnum('deck_type').notNull().default('standard'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
@@ -114,6 +117,7 @@ export const cards = pgTable('cards', {
   analogy: text('analogy'),
   imageUrl: text('image_url'),
   difficulty: difficultyEnum('difficulty').notNull().default('medium'),
+  cardType: cardTypeEnum('card_type').notNull().default('standard'),
   position: integer('position').notNull().default(0),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),

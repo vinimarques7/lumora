@@ -168,6 +168,36 @@ function CardFormDialog({
     setForm((f) => ({ ...f, [key]: val }))
   }
 
+  const answerField = form.cardType === 'true_false' ? (
+    <div className="space-y-2">
+      <Label htmlFor="card-answer">Resposta *</Label>
+      <Select
+        value={form.answer || 'Verdadeiro'}
+        onValueChange={(v) => set('answer', v)}
+      >
+        <SelectTrigger id="card-answer">
+          <SelectValue placeholder="Selecione" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="Verdadeiro">Verdadeiro</SelectItem>
+          <SelectItem value="Falso">Falso</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  ) : (
+    <div className="space-y-2">
+      <Label htmlFor="card-answer">Resposta *</Label>
+      <Textarea
+        id="card-answer"
+        placeholder="A resposta correta..."
+        required
+        value={form.answer}
+        onChange={(e) => set('answer', e.target.value)}
+        className="min-h-[80px]"
+      />
+    </div>
+  )
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -195,16 +225,22 @@ function CardFormDialog({
               className="min-h-[80px]"
             />
           </div>
+          {answerField}
+
           <div className="space-y-2">
-            <Label htmlFor="card-answer">Resposta *</Label>
-            <Textarea
-              id="card-answer"
-              placeholder="A resposta correta..."
-              required
-              value={form.answer}
-              onChange={(e) => set('answer', e.target.value)}
-              className="min-h-[80px]"
-            />
+            <Label>Tipo do card</Label>
+            <Select
+              value={form.cardType}
+              onValueChange={(v) => set('cardType', v)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="standard">Padrão</SelectItem>
+                <SelectItem value="true_false">Verdadeiro ou Falso</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label>Explicação <span className="text-muted-foreground text-xs">(opcional)</span></Label>
@@ -380,6 +416,8 @@ export default function DeckPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editCard, setEditCard] = useState<Card | undefined>()
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null)
+  const [quizCount, setQuizCount] = useState(10)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   const { data, isLoading } = useQuery({
     queryKey: ['deck', id],
@@ -393,6 +431,22 @@ export default function DeckPage() {
     rawCards,
     `sc_card_order_${id}`,
   )
+
+  useEffect(() => {
+    if (!cards.length) {
+      setSelectedIds([])
+      setQuizCount(10)
+      return
+    }
+
+    setSelectedIds((prev) => {
+      const nextIds = cards.map((card) => card.id)
+      if (!prev.length) return nextIds
+      const preserved = prev.filter((id) => nextIds.includes(id))
+      return preserved.length ? preserved : nextIds
+    })
+    setQuizCount((prev) => Math.min(Math.max(1, prev), cards.length))
+  }, [cards])
 
   const deleteMutation = useMutation({
     mutationFn: (cardId: string) => cardsApi.delete(token!, cardId),
@@ -427,6 +481,7 @@ export default function DeckPage() {
 
   const deck = data?.deck
   const canEditDeck = !!user && !!deck && user.id === deck.ownerId
+  const selectedCardIds = selectedIds.length ? selectedIds : cards.map((card) => card.id)
 
   if (!deck) return <div className="container py-8">Deck não encontrado.</div>
 
@@ -457,13 +512,13 @@ export default function DeckPage() {
             {cards.length >= 2 && (
               <>
                 <Button variant="outline" size="sm" asChild>
-                  <Link to={`/decks/${id}/play/hold`}>
+                  <Link to={`/decks/${id}/play/hold${selectedCardIds.length < cards.length ? `?selected=${selectedCardIds.join(',')}` : ''}`}>
                     <Users className="h-4 w-4" />
                     Segura e Responde
                   </Link>
                 </Button>
                 <Button size="sm" asChild>
-                  <Link to={`/decks/${id}/play/quiz`}>
+                  <Link to={`/decks/${id}/play/quiz?count=${Math.min(quizCount, selectedCardIds.length)}${selectedCardIds.length < cards.length ? `&selected=${selectedCardIds.join(',')}` : ''}`}>
                     <Play className="h-4 w-4" />
                     Quiz Solo
                   </Link>
@@ -491,6 +546,42 @@ export default function DeckPage() {
         </div>
       </div>
 
+      {cards.length > 0 && (
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium">Selecionar cards para jogar</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds(cards.map((card) => card.id))}
+            >
+              Todos
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds([])}
+            >
+              Nenhum
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="quiz-count" className="text-sm">Qtd. quiz</Label>
+            <Input
+              id="quiz-count"
+              type="number"
+              min={1}
+              max={Math.max(1, selectedCardIds.length)}
+              value={quizCount}
+              onChange={(e) => setQuizCount(Math.min(Math.max(1, Number(e.target.value) || 1), Math.max(1, selectedCardIds.length)))}
+              className="w-20 h-9"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Cards grid — click outside any card collapses the open one */}
       {cards.length === 0 ? (
         <div className="text-center py-24 space-y-4">
@@ -515,6 +606,17 @@ export default function DeckPage() {
                 onClick={(e) => e.stopPropagation()}
                 className={`transition-transform ${dp['data-drag-over'] ? 'scale-[1.02] ring-2 ring-primary rounded-xl' : ''}`}
               >
+                {canEditDeck && (
+                  <div className="mb-2 flex items-center gap-2 rounded-md border bg-muted/30 px-2 py-1 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(card.id)}
+                      onChange={() => setSelectedIds((prev) => prev.includes(card.id) ? prev.filter((id) => id !== card.id) : [...prev, card.id])}
+                      className="accent-primary"
+                    />
+                    Incluir no jogo
+                  </div>
+                )}
                 <FlashCard
                   card={card}
                   expanded={expandedCardId === card.id}

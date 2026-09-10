@@ -25,6 +25,7 @@ decksRouter.get('/', requireAuth, async (c) => {
       category: decks.category,
       extraCategories: decks.extraCategories,
       deckDifficulty: decks.deckDifficulty,
+      deckType: decks.deckType,
       createdAt: decks.createdAt,
       cardCount: sql<number>`count(${cards.id})::int`,
     })
@@ -54,6 +55,7 @@ decksRouter.get('/saved', requireAuth, async (c) => {
       category: decks.category,
       extraCategories: decks.extraCategories,
       deckDifficulty: decks.deckDifficulty,
+      deckType: decks.deckType,
       createdAt: decks.createdAt,
       cardCount: sql<number>`count(distinct ${cards.id})::int`,
       creatorName: users.displayName,
@@ -85,6 +87,7 @@ decksRouter.get('/public', async (c) => {
       category: decks.category,
       extraCategories: decks.extraCategories,
       deckDifficulty: decks.deckDifficulty,
+      deckType: decks.deckType,
       createdAt: decks.createdAt,
       cardCount: sql<number>`count(distinct ${cards.id})::int`,
       creatorName: users.displayName,
@@ -135,15 +138,16 @@ decksRouter.post(
       category: z.string().max(60).nullable().optional(),
       extraCategories: z.array(z.string().max(60)).optional(),
       deckDifficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+      deckType: z.enum(['standard', 'true_false']).optional().default('standard'),
     }),
   ),
   async (c) => {
     const { sub } = c.get('user')
-    const { name, description, isPublic, category, extraCategories, deckDifficulty } = c.req.valid('json')
+    const { name, description, isPublic, category, extraCategories, deckDifficulty, deckType } = c.req.valid('json')
 
     const [deck] = await db
       .insert(decks)
-      .values({ name, description, ownerId: sub!, isPublic, category, extraCategories, deckDifficulty })
+      .values({ name, description, ownerId: sub!, isPublic, category, extraCategories, deckDifficulty, deckType })
       .returning()
 
     return c.json({ deck }, 201)
@@ -166,6 +170,7 @@ decksRouter.patch(
       category: z.string().max(60).nullable().optional(),
       extraCategories: z.array(z.string().max(60)).nullable().optional(),
       deckDifficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+      deckType: z.enum(['standard', 'true_false']).optional(),
     }),
   ),
   async (c) => {
@@ -263,24 +268,33 @@ decksRouter.get('/:id/quiz', requireAuth, async (c) => {
     return c.json({ error: 'O deck precisa ter pelo menos 2 cards para jogar.' }, 422)
   }
 
-  // Shuffle and pick `count` cards
-  const shuffled = allCards.sort(() => Math.random() - 0.5).slice(0, count)
+  const selectedIds = c.req.query('selected')?.split(',').filter(Boolean) ?? []
+  const pool = selectedIds.length ? allCards.filter((card) => selectedIds.includes(card.id)) : allCards
+
+  if (pool.length < 2) {
+    return c.json({ error: 'Seleção de cards insuficiente para jogar.' }, 422)
+  }
+
+  const shuffled = pool.sort(() => Math.random() - 0.5).slice(0, Math.min(count, pool.length))
 
   const questions = shuffled.map((card) => {
-    const otherAnswers = allCards
-      .filter((c) => c.id !== card.id)
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 3)
-      .map((c) => c.answer)
+    const normalizedAnswer = card.cardType === 'true_false' ? (card.answer.toLowerCase() === 'false' || card.answer.toLowerCase() === 'falso' || card.answer.toLowerCase() === 'f' ? 'Falso' : 'Verdadeiro') : card.answer
+    const options = card.cardType === 'true_false' ? ['Verdadeiro', 'Falso'] : (() => {
+      const otherAnswers = allCards
+        .filter((c) => c.id !== card.id)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 3)
+        .map((c) => c.answer)
 
-    const options = [...otherAnswers, card.answer].sort(() => Math.random() - 0.5)
+      return [...otherAnswers, card.answer].sort(() => Math.random() - 0.5)
+    })()
 
     return {
       id: card.id,
       question: card.question,
       explanation: card.explanation,
       analogy: card.analogy,
-      correctAnswer: card.answer,
+      correctAnswer: normalizedAnswer,
       options,
     }
   })
