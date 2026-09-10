@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, BookOpen, Play, Edit2, Trash2, Globe, Lock, MoreVertical, Tag, Users, RotateCcw, Bookmark, BookmarkX, Search, X, Layers } from 'lucide-react'
+import { Plus, BookOpen, Play, Edit2, Trash2, Globe, Lock, MoreVertical, Tag, Users, RotateCcw, Bookmark, BookmarkX, Search, X, Layers, Info } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
 import { decksApi, savedDecksApi, type DeckWithCount } from '@/lib/api'
@@ -287,7 +287,15 @@ function CreateDeckDialog({ onCreated }: { onCreated: () => void }) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Tipo do deck</Label>
+              <div className="flex items-center gap-1.5">
+                <Label>Tipo do deck</Label>
+                <span
+                  title="Padrão: o deck pode misturar respostas em texto livre com respostas Verdadeiro/Falso. Verdadeiro ou Falso: todos os cards do deck serão binários."
+                  className="inline-flex items-center"
+                >
+                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                </span>
+              </div>
               <Select value={deckType} onValueChange={(v) => setDeckType(v as 'standard' | 'true_false')}>
                 <SelectTrigger>
                   <SelectValue />
@@ -295,19 +303,6 @@ function CreateDeckDialog({ onCreated }: { onCreated: () => void }) {
                 <SelectContent>
                   <SelectItem value="standard">Padrão</SelectItem>
                   <SelectItem value="true_false">Verdadeiro ou Falso</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Categoria principal</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecionar..." />
-                </SelectTrigger>
-                <SelectContent className="max-h-60">
-                  {DECK_CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -324,6 +319,20 @@ function CreateDeckDialog({ onCreated }: { onCreated: () => void }) {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Categoria principal</Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Selecionar..." />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                {DECK_CATEGORIES.map((cat) => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Extra categories */}
