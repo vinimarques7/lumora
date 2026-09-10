@@ -10,6 +10,7 @@ describe('getCardFormDefaults', () => {
       analogy: '',
       imageUrl: '',
       difficulty: 'medium',
+      cardType: 'standard',
     })
   })
 
@@ -36,6 +37,7 @@ describe('getCardFormDefaults', () => {
       analogy: 'Analogia',
       imageUrl: 'https://example.com/card.png',
       difficulty: 'hard',
+      cardType: 'standard',
     })
   })
 })

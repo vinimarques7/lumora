@@ -63,6 +63,12 @@ export async function isEmailDeliverable(email: string): Promise<boolean> {
 
   if (THROWAWAY_DOMAINS.has(domain)) return false
 
+  // Domínios reservados para testes locais (ex.: .test) são válidos em ambiente
+  // de desenvolvimento/teste, mas ainda devem ser rejeitados em produção.
+  if ((domain === 'studycenter.test' || domain.endsWith('.test')) && process.env.NODE_ENV !== 'production') {
+    return true
+  }
+
   const apiKey = process.env.ABSTRACT_API_KEY
   if (!apiKey) {
     console.warn('[email-verify] ABSTRACT_API_KEY não configurada — usando checagem de MX apenas.')

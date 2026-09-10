@@ -48,4 +48,8 @@ describe('isEmailDeliverable', () => {
   it('accepts a normal public domain', async () => {
     await expect(isEmailDeliverable('usuario@gmail.com')).resolves.toBe(true)
   })
+
+  it('accepts test domains used by local e2e flows', async () => {
+    await expect(isEmailDeliverable('e2e_tester@studycenter.test')).resolves.toBe(true)
+  })
 })
