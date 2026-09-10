@@ -548,26 +548,28 @@ export default function DeckPage() {
 
       {cards.length > 0 && (
         <div className="mb-6 flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
             <span className="text-sm font-medium">Selecionar cards para jogar</span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedIds(cards.map((card) => card.id))}
-            >
-              Todos
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedIds([])}
-            >
-              Nenhum
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedIds(cards.map((card) => card.id))}
+              >
+                Todos
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedIds([])}
+              >
+                Nenhum
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 self-start sm:self-auto">
             <Label htmlFor="quiz-count" className="text-sm">Qtd. quiz</Label>
             <Input
               id="quiz-count"
@@ -576,7 +578,7 @@ export default function DeckPage() {
               max={Math.max(1, selectedCardIds.length)}
               value={quizCount}
               onChange={(e) => setQuizCount(Math.min(Math.max(1, Number(e.target.value) || 1), Math.max(1, selectedCardIds.length)))}
-              className="w-20 h-9"
+              className="h-9 w-20"
             />
           </div>
         </div>

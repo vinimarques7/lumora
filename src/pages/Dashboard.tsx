@@ -196,6 +196,38 @@ function GameLaunchDialog({
   )
 }
 
+function DeckTypeInfoPopover() {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          aria-label="Informações sobre tipos de deck"
+          className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-input bg-background text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <Info className="h-3.5 w-3.5" />
+        </button>
+      </DialogTrigger>
+
+      <DialogContent className="w-[calc(100%-1rem)] max-w-sm rounded-xl border bg-popover text-popover-foreground shadow-lg">
+        <DialogHeader className="space-y-1">
+          <DialogTitle className="text-left text-base">Tipos de deck</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2 text-left text-sm leading-relaxed">
+          <p>
+            <span className="font-medium">Padrão:</span> pode misturar respostas em texto livre com Verdadeiro/Falso.
+          </p>
+          <p>
+            <span className="font-medium">Verdadeiro ou Falso:</span> todos os cards do deck serão binários.
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ─── CreateDeckDialog ─────────────────────────────────────────────────────────
 
 function CreateDeckDialog({ onCreated }: { onCreated: () => void }) {
@@ -254,7 +286,7 @@ function CreateDeckDialog({ onCreated }: { onCreated: () => void }) {
           Novo Deck
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100%-1rem)] max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Criar novo deck</DialogTitle>
           <DialogDescription>Organize seus cards por tema ou assunto.</DialogDescription>
@@ -289,12 +321,7 @@ function CreateDeckDialog({ onCreated }: { onCreated: () => void }) {
             <div className="space-y-2">
               <div className="flex items-center gap-1.5">
                 <Label>Tipo do deck</Label>
-                <span
-                  title="Padrão: o deck pode misturar respostas em texto livre com respostas Verdadeiro/Falso. Verdadeiro ou Falso: todos os cards do deck serão binários."
-                  className="inline-flex items-center"
-                >
-                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
-                </span>
+                <DeckTypeInfoPopover />
               </div>
               <Select value={deckType} onValueChange={(v) => setDeckType(v as 'standard' | 'true_false')}>
                 <SelectTrigger>
@@ -464,7 +491,7 @@ function DeckCard({
 
   return (
     <Card
-      className={`group hover:shadow-md transition-all relative cursor-grab active:cursor-grabbing select-none ${
+      className={`group relative w-full min-w-0 overflow-hidden hover:shadow-md transition-all cursor-grab active:cursor-grabbing select-none ${
         dragProps['data-drag-over'] ? 'ring-2 ring-primary scale-[1.02]' : ''
       }`}
       {...dragProps}
@@ -480,13 +507,13 @@ function DeckCard({
         </div>
       )}
 
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <BookOpen className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-            <CardTitle className="text-base truncate">{deck.name}</CardTitle>
+      <CardHeader className="min-w-0 pb-2">
+        <div className="flex items-start justify-between gap-2 min-w-0">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <CardTitle className="min-w-0 truncate text-base leading-snug">{deck.name}</CardTitle>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             {/* Pin button */}
             <div className="relative">
               <button
@@ -574,11 +601,11 @@ function DeckCard({
         )}
       </CardHeader>
 
-      <CardContent className="pb-3">
-        <div className="flex items-center gap-2 flex-wrap">
+      <CardContent className="min-w-0 pb-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <Badge variant="secondary">{pluralize(deck.cardCount, 'card', 'cards')}</Badge>
           {deck.category && (
-            <Badge variant="outline" className="text-xs gap-1">{deck.category}</Badge>
+            <Badge variant="outline" className="gap-1 text-xs">{deck.category}</Badge>
           )}
           {deck.isPublic ? (
             <Badge variant="outline" className="gap-1"><Globe className="h-3 w-3" /> Público</Badge>
@@ -588,14 +615,14 @@ function DeckCard({
         </div>
       </CardContent>
 
-      <CardFooter className="pt-0 gap-2">
-        <Button size="sm" variant="outline" asChild className="flex-1">
+      <CardFooter className="min-w-0 gap-2 pt-0">
+        <Button size="sm" variant="outline" asChild className="flex-1 min-w-0">
           <Link to={`/decks/${deck.id}`}>Ver cards</Link>
         </Button>
         {deck.cardCount >= 2 ? (
           <Button
             size="sm"
-            className="flex-1"
+            className="flex-1 min-w-0"
             onClick={() => onLaunch(deck.id)}
           >
             <Play className="h-3.5 w-3.5" />
@@ -605,13 +632,13 @@ function DeckCard({
           <Button
             size="sm"
             variant="outline"
-            className="flex-1 text-muted-foreground cursor-default"
+            className="min-w-0 flex-1 cursor-default text-muted-foreground"
             disabled
             title="Adicione pelo menos 2 cards para jogar"
           >
             <Play className="h-3.5 w-3.5 opacity-40" />
             Jogar
-            <span className="ml-1 text-[10px] rounded-full bg-muted-foreground/15 px-1.5 py-0.5 leading-none">
+            <span className="ml-1 rounded-full bg-muted-foreground/15 px-1.5 py-0.5 text-[10px] leading-none">
               +2 cards
             </span>
           </Button>
@@ -694,10 +721,10 @@ export default function Dashboard() {
 
   return (
     <div className="container py-8 page-enter">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Meus Decks</h1>
-          <p className="text-muted-foreground mt-1">
+      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold sm:text-3xl">Meus Decks</h1>
+          <p className="mt-1 text-sm text-muted-foreground sm:text-base">
             {rawDecks.length > 0
               ? hasActiveFilter
                 ? `${pluralize(filteredDecks.length, 'deck', 'decks')} encontrado(s) de ${rawDecks.length}`
@@ -705,7 +732,7 @@ export default function Dashboard() {
               : 'Nenhum deck ainda'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           {rawDecks.length > 1 && !hasActiveFilter && (
             <Button variant="ghost" size="sm" onClick={resetOrder} title="Resetar ordem">
               <RotateCcw className="h-4 w-4" />
@@ -716,18 +743,18 @@ export default function Dashboard() {
       </div>
 
       {rawDecks.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 mb-6">
-          <div className="relative flex-1 min-w-[180px]">
+        <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative w-full flex-1 min-w-0 sm:min-w-[180px]">
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               placeholder="Buscar deck..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-9"
+              className="h-9 pl-8"
             />
           </div>
           <Select value={categoryFilter || 'all'} onValueChange={(v) => setCategoryFilter(v === 'all' ? '' : v)}>
-            <SelectTrigger className="w-[180px] h-9">
+            <SelectTrigger className="h-9 w-full sm:w-[180px]">
               <SelectValue placeholder="Categoria" />
             </SelectTrigger>
             <SelectContent className="max-h-60">
@@ -740,7 +767,7 @@ export default function Dashboard() {
           <Button
             variant={groupByCategory ? 'default' : 'outline'}
             size="sm"
-            className="h-9"
+            className="h-9 w-full sm:w-auto"
             onClick={() => setGroupByCategory((v) => !v)}
             title="Agrupar por tema"
           >
@@ -751,7 +778,7 @@ export default function Dashboard() {
             <Button
               variant="ghost"
               size="sm"
-              className="h-9"
+              className="h-9 w-full sm:w-auto"
               onClick={() => {
                 setSearch('')
                 setCategoryFilter('')
