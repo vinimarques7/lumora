@@ -6,6 +6,7 @@ import { authRouter } from './_routes/auth.js'
 import { usersRouter } from './_routes/users.js'
 import { decksRouter } from './_routes/decks.js'
 import { cardsRouter } from './_routes/cards.js'
+import { maletasRouter } from './_routes/maletas.js'
 import { adminRouter } from './_routes/admin.js'
 
 const app = new Hono().basePath('/api')
@@ -33,6 +34,7 @@ app.route('/auth', authRouter)
 app.route('/users', usersRouter)
 app.route('/decks', decksRouter)
 app.route('/cards', cardsRouter)
+app.route('/maletas', maletasRouter)
 app.route('/admin', adminRouter)
 
 // ─── Health check ─────────────────────────────────────────────────────────────

@@ -32,10 +32,31 @@ export const users = pgTable('users', {
 })
 
 export const usersRelations = relations(users, ({ many }) => ({
+  maletas: many(maletas),
   decks: many(decks),
   cards: many(cards),
   refreshTokens: many(refreshTokens),
   savedDecks: many(savedDecks),
+  attempts: many(attempts),
+}))
+
+// ─── Maletas ───────────────────────────────────────────────────────────────────
+
+export const maletas = pgTable('maletas', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 100 }).notNull(),
+  description: text('description'),
+  ownerId: uuid('owner_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  category: varchar('category', { length: 60 }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+})
+
+export const maletasRelations = relations(maletas, ({ one, many }) => ({
+  owner: one(users, { fields: [maletas.ownerId], references: [users.id] }),
+  decks: many(decks),
 }))
 
 // ─── Refresh Tokens ───────────────────────────────────────────────────────────
@@ -79,6 +100,7 @@ export const decks = pgTable('decks', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: varchar('name', { length: 100 }).notNull(),
   description: text('description'),
+  maletaId: uuid('maleta_id').references(() => maletas.id, { onDelete: 'set null' }),
   ownerId: uuid('owner_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
@@ -94,6 +116,7 @@ export const decks = pgTable('decks', {
 
 export const decksRelations = relations(decks, ({ one, many }) => ({
   owner: one(users, { fields: [decks.ownerId], references: [users.id] }),
+  maleta: one(maletas, { fields: [decks.maletaId], references: [maletas.id] }),
   cards: many(cards),
   savedByUsers: many(savedDecks),
 }))
@@ -119,9 +142,29 @@ export const cards = pgTable('cards', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 
-export const cardsRelations = relations(cards, ({ one }) => ({
+export const cardsRelations = relations(cards, ({ one, many }) => ({
   deck: one(decks, { fields: [cards.deckId], references: [decks.id] }),
   author: one(users, { fields: [cards.authorId], references: [users.id] }),
+  attempts: many(attempts),
+}))
+
+// ─── Attempts ─────────────────────────────────────────────────────────────────
+
+export const attempts = pgTable('attempts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  cardId: uuid('card_id')
+    .notNull()
+    .references(() => cards.id, { onDelete: 'cascade' }),
+  correct: boolean('correct').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
+export const attemptsRelations = relations(attempts, ({ one }) => ({
+  user: one(users, { fields: [attempts.userId], references: [users.id] }),
+  card: one(cards, { fields: [attempts.cardId], references: [cards.id] }),
 }))
 
 // ─── Site Settings ────────────────────────────────────────────────────────────
@@ -175,9 +218,13 @@ export const savedDecksRelations = relations(savedDecks, ({ one }) => ({
 
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
+export type Maleta = typeof maletas.$inferSelect
+export type NewMaleta = typeof maletas.$inferInsert
 export type Deck = typeof decks.$inferSelect
 export type NewDeck = typeof decks.$inferInsert
 export type Card = typeof cards.$inferSelect
 export type NewCard = typeof cards.$inferInsert
+export type Attempt = typeof attempts.$inferSelect
+export type NewAttempt = typeof attempts.$inferInsert
 export type SiteSetting = typeof siteSettings.$inferSelect
 export type GameSession = typeof gameSessions.$inferSelect

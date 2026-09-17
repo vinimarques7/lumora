@@ -4,10 +4,50 @@ import { z } from 'zod'
 import { eq } from 'drizzle-orm'
 import { put } from '@vercel/blob'
 import { db } from '../_db/index.js'
-import { cards, decks } from '../_db/schema.js'
+import { cards, decks, attempts } from '../_db/schema.js'
 import { requireAuth } from '../_middleware/auth.js'
 
 export const cardsRouter = new Hono()
+
+// ─── POST /api/cards/:id/attempts ─────────────────────────────────────────────
+
+cardsRouter.post(
+  '/:id/attempts',
+  requireAuth,
+  zValidator(
+    'json',
+    z.object({
+      correct: z.boolean(),
+    }),
+  ),
+  async (c) => {
+    const { id } = c.req.param()
+    const { sub } = c.get('user')
+    const { correct } = c.req.valid('json')
+
+    const [card] = await db.select().from(cards).where(eq(cards.id, id)).limit(1)
+    if (!card) return c.json({ error: 'Card não encontrado.' }, 404)
+
+    const [record] = await db
+      .insert(attempts)
+      .values({ userId: sub!, cardId: id, correct })
+      .returning()
+
+    return c.json({ attempt: record }, 201)
+  },
+)
+
+// ─── GET /api/cards/:id/attempts ───────────────────────────────────────────────
+
+cardsRouter.get('/:id/attempts', requireAuth, async (c) => {
+  const { id } = c.req.param()
+  const { sub } = c.get('user')
+
+  const rows = await db.select().from(attempts).where(eq(attempts.cardId, id)).orderBy(attempts.createdAt)
+  const myRows = rows.filter((row) => row.userId === sub)
+
+  return c.json({ attempts: myRows })
+})
 
 // ─── POST /api/cards ───────────────────────────────────────────────────────────
 
