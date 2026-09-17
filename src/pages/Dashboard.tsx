@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { pluralize, shouldPromptBeforeDiscard } from '@/lib/utils'
+import { pluralize, shouldPromptBeforeDiscard, groupDecksByMaleta } from '@/lib/utils'
 import { useLocalOrder } from '@/lib/useLocalOrder'
 import { DECK_CATEGORIES, DIFFICULTY_LABEL } from '@/lib/categories'
 
@@ -632,7 +632,20 @@ export default function Dashboard() {
   const [launchDeckId, setLaunchDeckId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [maletaFilter, setMaletaFilter] = useState('all')
   const [groupByCategory, setGroupByCategory] = useState(false)
+
+  const { data: maletasData } = useQuery({
+    queryKey: ['maletas'],
+    queryFn: async () => {
+      const res = await fetch('/api/maletas', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('Erro ao buscar maletas')
+      return res.json() as Promise<{ maletas: Array<{ id: string; name: string }> }>
+    },
+    enabled: !!token,
+  })
 
   const { data, isLoading } = useQuery({
     queryKey: ['decks'],
@@ -667,7 +680,8 @@ export default function Dashboard() {
       deck.name.toLowerCase().includes(search.toLowerCase()) ||
       deck.description?.toLowerCase().includes(search.toLowerCase())
     const matchesCategory = categoryFilter === '' || deck.category === categoryFilter
-    return matchesSearch && matchesCategory
+    const matchesMaleta = maletaFilter === 'all' || deck.maletaId === maletaFilter || (maletaFilter === 'sem-maleta' && !deck.maletaId)
+    return matchesSearch && matchesCategory && matchesMaleta
   })
 
   const groupedDecks = groupByCategory
@@ -680,6 +694,8 @@ export default function Dashboard() {
         }, {}),
       ).sort(([a], [b]) => a.localeCompare(b, 'pt-BR'))
     : null
+
+  const maletaSummary = groupDecksByMaleta(rawDecks as Array<{ maletaId: string | null }>, maletasData?.maletas ?? [])
 
   const { data: savedData } = useQuery({
     queryKey: ['saved-decks'],
@@ -742,6 +758,18 @@ export default function Dashboard() {
               ))}
             </SelectContent>
           </Select>
+          <Select value={maletaFilter} onValueChange={setMaletaFilter}>
+            <SelectTrigger className="w-[180px] h-9">
+              <SelectValue placeholder="Maleta" />
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              <SelectItem value="all">Todas as maletas</SelectItem>
+              {maletaSummary.map((m) => (
+                <SelectItem key={m.maletaId ?? 'sem-maleta'} value={m.maletaId ?? 'sem-maleta'}>{m.name} ({m.count})</SelectItem>
+              ))}
+              <SelectItem value="sem-maleta">Sem maleta</SelectItem>
+            </SelectContent>
+          </Select>
           <Button
             variant={groupByCategory ? 'default' : 'outline'}
             size="sm"
@@ -760,6 +788,7 @@ export default function Dashboard() {
               onClick={() => {
                 setSearch('')
                 setCategoryFilter('')
+                setMaletaFilter('all')
               }}
             >
               <X className="h-4 w-4" />

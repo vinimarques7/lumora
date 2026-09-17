@@ -82,3 +82,24 @@ export function shouldPromptBeforeDiscard<T extends Record<string, unknown>>(
     return currentValue !== initialValue
   })
 }
+
+export function groupDecksByMaleta<T extends { maletaId: string | null }>(
+  decks: T[],
+  maletas: Array<{ id: string; name: string }>,
+): Array<{ maletaId: string | null; name: string; count: number }> {
+  const grouped = new Map<string | null, number>()
+
+  for (const deck of decks) {
+    const key = deck.maletaId ?? null
+    grouped.set(key, (grouped.get(key) ?? 0) + 1)
+  }
+
+  return [
+    ...maletas.map((maleta) => ({
+      maletaId: maleta.id,
+      name: maleta.name,
+      count: grouped.get(maleta.id) ?? 0,
+    })),
+    { maletaId: null, name: 'Sem maleta', count: grouped.get(null) ?? 0 },
+  ]
+}
