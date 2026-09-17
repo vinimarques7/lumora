@@ -37,7 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { pluralize } from '@/lib/utils'
+import { pluralize, shouldPromptBeforeDiscard } from '@/lib/utils'
 import { useLocalOrder } from '@/lib/useLocalOrder'
 
 const DIFFICULTY_LABEL = { easy: '🟢 Fácil', medium: '🟡 Médio', hard: '🔴 Difícil' }
@@ -151,6 +151,43 @@ function CardFormDialog({
     difficulty: card?.difficulty ?? 'medium',
   })
 
+  const initialValues = {
+    question: card?.question ?? '',
+    answer: card?.answer ?? '',
+    explanation: card?.explanation ?? '',
+    analogy: card?.analogy ?? '',
+    imageUrl: card?.imageUrl ?? '',
+    difficulty: card?.difficulty ?? 'medium',
+  }
+
+  function handleClose(nextOpen: boolean) {
+    if (!nextOpen) {
+      const currentValues = {
+        question: form.question,
+        answer: form.answer,
+        explanation: form.explanation,
+        analogy: form.analogy,
+        imageUrl: form.imageUrl,
+        difficulty: form.difficulty,
+      }
+      if (shouldPromptBeforeDiscard(currentValues, initialValues)) {
+        const confirmed = window.confirm(card ? 'Deseja realmente cancelar a edição deste card?' : 'Deseja realmente cancelar a criação deste card?')
+        if (!confirmed) return
+      }
+      onOpenChange(false)
+      setForm({
+        question: card?.question ?? '',
+        answer: card?.answer ?? '',
+        explanation: card?.explanation ?? '',
+        analogy: card?.analogy ?? '',
+        imageUrl: card?.imageUrl ?? '',
+        difficulty: card?.difficulty ?? 'medium',
+      })
+      return
+    }
+    onOpenChange(true)
+  }
+
   const mutation = useMutation({
     mutationFn: () =>
       card
@@ -180,7 +217,7 @@ function CardFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{card ? 'Editar card' : 'Novo card'}</DialogTitle>
@@ -251,7 +288,7 @@ function CardFormDialog({
             </Select>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => handleClose(false)}>
               Cancelar
             </Button>
             <Button type="submit" disabled={mutation.isPending}>
@@ -387,7 +424,7 @@ export default function DeckPage() {
   })
 
   function handleDelete(cardId: string) {
-    if (confirm('Excluir este card?')) deleteMutation.mutate(cardId)
+    if (window.confirm('Deseja realmente excluir este card?')) deleteMutation.mutate(cardId)
   }
 
   function handleEdit(card: Card) {

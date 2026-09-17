@@ -62,3 +62,23 @@ export function calcQuizPoints(timeLeftMs: number, totalTimeMs: number): number 
   const ratio = Math.max(0, timeLeftMs / totalTimeMs)
   return Math.floor(900 * ratio + 100) // 100–1000 points
 }
+
+export function shouldPromptBeforeDiscard<T extends Record<string, unknown>>(
+  current: T,
+  initial: T,
+): boolean {
+  return Object.keys(current).some((key) => {
+    const currentValue = current[key]
+    const initialValue = initial[key]
+
+    if (typeof currentValue === 'string' && typeof initialValue === 'string') {
+      return currentValue.trim() !== initialValue.trim()
+    }
+
+    if (Array.isArray(currentValue) && Array.isArray(initialValue)) {
+      return JSON.stringify(currentValue) !== JSON.stringify(initialValue)
+    }
+
+    return currentValue !== initialValue
+  })
+}

@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { pluralize } from '@/lib/utils'
+import { pluralize, shouldPromptBeforeDiscard } from '@/lib/utils'
 import { useLocalOrder } from '@/lib/useLocalOrder'
 import { DECK_CATEGORIES, DIFFICULTY_LABEL } from '@/lib/categories'
 
@@ -210,6 +210,35 @@ function CreateDeckDialog({ onCreated }: { onCreated: () => void }) {
   const [extraOpen, setExtraOpen] = useState(false)
   const [extraSearch, setExtraSearch] = useState('')
 
+  const initialValues = {
+    name: '',
+    description: '',
+    isPublic: false,
+    category: '',
+    extraCategories: [] as string[],
+    deckDifficulty: 'medium' as const,
+  }
+
+  function handleClose(nextOpen: boolean) {
+    if (!nextOpen) {
+      const currentValues = { name, description, isPublic, category, extraCategories, deckDifficulty }
+      if (shouldPromptBeforeDiscard(currentValues, initialValues)) {
+        const confirmed = window.confirm('Deseja realmente cancelar a criação deste deck?')
+        if (!confirmed) return
+      }
+      setOpen(false)
+      setName('')
+      setDescription('')
+      setCategory('')
+      setExtraCategories([])
+      setDeckDifficulty('medium')
+      setExtraOpen(false)
+      setExtraSearch('')
+      return
+    }
+    setOpen(true)
+  }
+
   const mutation = useMutation({
     mutationFn: () =>
       decksApi.create(token!, {
@@ -244,7 +273,7 @@ function CreateDeckDialog({ onCreated }: { onCreated: () => void }) {
   )
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogTrigger asChild>
         <Button>
           <Plus className="h-4 w-4" />
@@ -380,7 +409,7 @@ function CreateDeckDialog({ onCreated }: { onCreated: () => void }) {
             </Label>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => handleClose(false)}>
               Cancelar
             </Button>
             <Button type="submit" disabled={mutation.isPending || !name.trim()}>
@@ -621,7 +650,7 @@ export default function Dashboard() {
   })
 
   function confirmDelete(id: string) {
-    if (confirm('Excluir este deck? Todos os cards serão removidos.')) {
+    if (window.confirm('Deseja realmente excluir este deck? Todos os cards serão removidos.')) {
       deleteMutation.mutate(id)
     }
   }
