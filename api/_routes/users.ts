@@ -4,8 +4,9 @@ import { z } from 'zod'
 import { eq } from 'drizzle-orm'
 import argon2 from 'argon2'
 import { db } from '../_db/index.js'
-import { users } from '../_db/schema.js'
+import { attempts, users } from '../_db/schema.js'
 import { requireAuth, requireAdmin } from '../_middleware/auth.js'
+import { buildDailyProgressFromAttempts, calculateProgressSummary, computeStreak } from '../_lib/progress.js'
 
 export const usersRouter = new Hono()
 const REFRESH_COOKIE = 'refresh_token'
@@ -25,6 +26,30 @@ usersRouter.get('/me', requireAuth, async (c) => {
   if (!user) return c.json({ error: 'Usuário não encontrado.' }, 404)
 
   return c.json({ user })
+})
+
+usersRouter.get('/me/progress', requireAuth, async (c) => {
+  const { sub } = c.get('user')
+
+  const userAttempts = await db
+    .select({ correct: attempts.correct, createdAt: attempts.createdAt })
+    .from(attempts)
+    .where(eq(attempts.userId, sub!))
+    .orderBy(attempts.createdAt)
+
+  const summary = calculateProgressSummary(userAttempts)
+  const history = buildDailyProgressFromAttempts(userAttempts)
+  const dailyHistory = history.map((entry) => ({
+    date: entry.date,
+    correct: entry.correct,
+    incorrect: entry.incorrect,
+  }))
+
+  return c.json({
+    summary,
+    history: dailyHistory,
+    streak: computeStreak(dailyHistory),
+  })
 })
 
 // ─── PATCH /api/users/me ──────────────────────────────────────────────────────

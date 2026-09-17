@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { calculateProgressSummary, computeDailyHistory, computeStreak } from '../api/_lib/progress'
+import { calculateProgressSummary, computeDailyHistory, computeStreak, buildDailyProgressFromAttempts } from '../api/_lib/progress'
+import { rankCardsForReview } from '../api/_lib/recommendations'
 
 describe('calculateProgressSummary', () => {
   it('counts attempts, correct answers and overall accuracy', () => {
@@ -41,5 +42,35 @@ describe('computeStreak', () => {
     ])
 
     expect(streak).toBe(3)
+  })
+})
+describe('buildDailyProgressFromAttempts', () => {
+  it('groups raw attempts into accurate daily totals', () => {
+    const history = buildDailyProgressFromAttempts([
+      { correct: true, createdAt: '2025-01-01T10:00:00.000Z' },
+      { correct: false, createdAt: '2025-01-01T12:00:00.000Z' },
+      { correct: true, createdAt: '2025-01-02T15:00:00.000Z' },
+      { correct: true, createdAt: '2025-01-03T08:00:00.000Z' },
+      { correct: false, createdAt: '2025-01-03T09:00:00.000Z' },
+    ])
+
+    expect(history).toEqual([
+      { date: '2025-01-01', correct: 1, incorrect: 1 },
+      { date: '2025-01-02', correct: 1, incorrect: 0 },
+      { date: '2025-01-03', correct: 1, incorrect: 1 },
+    ])
+  })
+})
+
+describe('rankCardsForReview', () => {
+  it('prioritizes cards with more errors and fewer attempts', () => {
+    const ranked = rankCardsForReview([
+      { id: 'a', difficulty: 'easy', attempts: [{ correct: true }, { correct: true }, { correct: true }] },
+      { id: 'b', difficulty: 'hard', attempts: [{ correct: false }, { correct: false }, { correct: true }] },
+      { id: 'c', difficulty: 'medium', attempts: [{ correct: true }] },
+      { id: 'd', difficulty: 'easy', attempts: [] },
+    ])
+
+    expect(ranked.map((card) => card.id)).toEqual(['b', 'd', 'c', 'a'])
   })
 })

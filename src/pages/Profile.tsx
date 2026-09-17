@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Palette, KeyRound, UserCircle, Image as ImageIcon, TriangleAlert } from 'lucide-react'
@@ -236,14 +236,19 @@ export default function Profile() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Palette className="h-5 w-5 text-primary" />
-            Cor tema
-          </CardTitle>
-          <CardDescription>
-            Essa cor afeta os elementos principais da interface para sua conta
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Palette className="h-5 w-5 text-primary" />
+              Cor tema
+            </CardTitle>
+            <CardDescription>
+              Essa cor afeta os elementos principais da interface para sua conta
+            </CardDescription>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/progress">Ver progresso</Link>
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-8 gap-2">

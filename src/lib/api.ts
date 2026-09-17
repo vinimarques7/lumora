@@ -78,6 +78,9 @@ export const authApi = {
 export const usersApi = {
   me: (token: string) => request<{ user: AppUser }>('/users/me', { token }),
 
+  getProgress: (token: string) =>
+    request<{ summary: ProgressSummary; history: DailyProgress[]; streak: number }>('/users/me/progress', { token }),
+
   updateMe: (token: string, body: { themeColor?: string; displayName?: string; occupation?: string; currentPassword?: string; newPassword?: string }) =>
     request<{ user: AppUser }>('/users/me', { method: 'PATCH', body: JSON.stringify(body), token }),
 
@@ -159,6 +162,20 @@ export interface AppUser {
   displayName: string | null
   occupation: string | null
   createdAt?: string
+}
+
+export interface ProgressSummary {
+  total: number
+  correct: number
+  incorrect: number
+  accuracy: number
+}
+
+export interface DailyProgress {
+  date: string
+  correct: number
+  incorrect: number
+  accuracy?: number
 }
 
 export interface Deck {

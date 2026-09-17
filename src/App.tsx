@@ -11,6 +11,7 @@ import DeckPage from '@/pages/DeckPage'
 import HoldAndAnswerGame from '@/pages/HoldAndAnswerGame'
 import QuizGame from '@/pages/QuizGame'
 import Profile from '@/pages/Profile'
+import ProgressPage from '@/pages/Progress'
 import AdminPage from '@/pages/AdminPage'
 import Explore from '@/pages/Explore'
 
@@ -42,6 +43,7 @@ export default function App() {
               <Route path="/play/hold" element={<HoldAndAnswerGame />} />
               <Route path="/play/quiz" element={<QuizGame />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/progress" element={<ProgressPage />} />
             </Route>
 
             <Route element={<ProtectedRoute adminOnly />}>

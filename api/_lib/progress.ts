@@ -24,6 +24,33 @@ export function calculateProgressSummary(attempts: ProgressAttempt[]) {
   }
 }
 
+export function buildDailyProgressFromAttempts(attempts: ProgressAttempt[]) {
+  const grouped = new Map<string, { correct: number; incorrect: number }>()
+
+  for (const attempt of attempts) {
+    const iso = attempt.createdAt ? new Date(attempt.createdAt).toISOString() : null
+    if (!iso) continue
+
+    const date = iso.slice(0, 10)
+    const current = grouped.get(date) ?? { correct: 0, incorrect: 0 }
+
+    if (attempt.correct) {
+      current.correct += 1
+    } else {
+      current.incorrect += 1
+    }
+
+    grouped.set(date, current)
+  }
+
+  return [...grouped.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, values]) => ({
+      date,
+      ...values,
+    }))
+}
+
 export function computeDailyHistory(entries: Array<{ date: string; correct: number; incorrect: number }>): DailyProgress[] {
   return entries.map((entry) => ({
     ...entry,
